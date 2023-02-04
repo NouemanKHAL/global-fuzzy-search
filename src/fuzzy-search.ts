@@ -1,6 +1,9 @@
 import * as vscode from "vscode";
-import { showSearchResults, SearchResultItem } from "./components";
+import * as path from 'path';
+import { showSearchResults, SearchResultItem, SearchResultItemNode} from "./components";
+import { fastFindInFiles } from 'fast-find-in-files'
 
+// TODO: implement fuzzy search when the GUI work is done
 export async function fuzzySearchCommand() {
   const searchTerm = await vscode.window.showInputBox({
     placeHolder: "Enter search term",
@@ -10,33 +13,22 @@ export async function fuzzySearchCommand() {
     return;
   }
 
-  const files = await vscode.workspace.findFiles("**/*");
   const results = [];
 
-  for (const file of files) {
-    try {
-      const document = await vscode.workspace.openTextDocument(file);
-      const content = document.getText();
-      let lineNumber = -1;
-      let lineText = "";
+  let entries = fastFindInFiles(process.cwd(), searchTerm);
 
-      for (let i = 0; i < content.length; i++) {
-        let line = document.lineAt(i).text;
-        if (line.includes(searchTerm)) {
-          lineNumber = i;
-          lineText = line;
-          let item = new SearchResultItem(
-            document.fileName,
-            lineNumber,
-            lineText
-          );
-          results.push(item);
-        }
-      }
-    } catch (error) {}
+  for (let entry of entries) {
+    let filename = path.basename(entry.filePath);
+    let rootItem = new SearchResultItem(entry.filePath, 0, "");
+    let rootNode = new SearchResultItemNode(rootItem, filename, vscode.TreeItemCollapsibleState.Collapsed, vscode.ThemeIcon.File, []); 
+    for (let hit of entry.queryHits) {
+      let childItem = new SearchResultItem(entry.filePath, hit.lineNumber, hit.line);
+      let childNode = new SearchResultItemNode(childItem, hit.line, vscode.TreeItemCollapsibleState.None, undefined, undefined);
+      rootNode.children?.push(childNode);
+    }
+    results.push(rootNode);
   }
 
-  console.log(results);
   showSearchResults(results);
 }
 

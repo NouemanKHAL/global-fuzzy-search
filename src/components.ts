@@ -1,5 +1,4 @@
 import * as vscode from "vscode";
-import * as path from 'path';
 
 export class SearchResultItem {
   constructor(
@@ -45,50 +44,8 @@ class SearchResultDataProvider
 
   data: SearchResultItemNode[];
 
-  tree: Map<string, SearchResultItemNode[]>;
-
-  constructor(public items: SearchResultItem[]) {
-    this.data = items.map(
-      (item) =>
-        new SearchResultItemNode(
-          item,
-          path.basename(item.filePath),
-          vscode.TreeItemCollapsibleState.Collapsed,
-          undefined
-        )
-    );
-    this.tree = new Map<string, SearchResultItemNode[]>();
-    for (let d of this.data) {
-      if (this.tree.get(d.label) !== undefined) {
-        this.tree.get(d.label)?.push(d);
-      } else {
-        this.tree.set(d.label, [d]);
-      }
-    }
-    this.data = [];
-    for (let [k, v] of this.tree) {
-      if (v.length === 0) {
-        continue;
-      }
-      let first = v.at(0);
-      if (first !== undefined) {
-        for (let value of v) {
-          value.collapsibleState = vscode.TreeItemCollapsibleState.None;
-          value.iconPath = undefined;
-          value.label = value.item.lineText;
-        }
-        let root = new SearchResultItemNode(
-          new SearchResultItem(k, 0, ""),
-          k,
-          vscode.TreeItemCollapsibleState.Collapsed,
-          vscode.ThemeIcon.File,
-          v.slice(0)
-        );
-        this.data.push(root);
-      }
-    }
-
-    console.dir(this.tree);
+  constructor(public items: SearchResultItemNode[]) {
+    this.data = items;
   }
 
   getTreeItem(element: SearchResultItemNode): SearchResultItemNode {
@@ -109,7 +66,7 @@ class SearchResultDataProvider
   }
 }
 
-export function showSearchResults(items: SearchResultItem[]): void {
+export function showSearchResults(items: SearchResultItemNode[]): void {
   const searchResultsTreeView = vscode.window.createTreeView("searchResults", {
     treeDataProvider: new SearchResultDataProvider(items),
     showCollapseAll: true,

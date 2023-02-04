@@ -1,3 +1,4 @@
+import path = require('path');
 import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -20,12 +21,19 @@ export function activate(context: vscode.ExtensionContext) {
           try {
             const document = await vscode.workspace.openTextDocument(file);
             const content = document.getText();
-            if (content.includes(searchTerm)) {
-              let item = new SearchResultItem(document.fileName,1,"line-text");
-              results.push(
-                new SearchResultItemNode(item,"hello", vscode.TreeItemCollapsibleState.Expanded)
-              );
+            let lineNumber = -1;
+            let lineText = "";
+
+            for (let i = 0; i < content.length; i++) {
+              let line = document.lineAt(i).text;
+              if (line.includes(searchTerm)) {
+                lineNumber = i;
+                lineText = line;
+                break;
+              }
             }
+            let item = new SearchResultItem(document.fileName,lineNumber,lineText);
+              results.push(item);
           } catch(error) {
 
           }
@@ -33,16 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         console.log(results);
         showSearchResults(results);
-        
-
-        // const dataProvider =  new TreeDataProvider(results);
-        // const resultsTreeView = vscode.window.createTreeView('searchResults', {
-        //   treeDataProvider: dataProvider,
-        //   showCollapseAll: true
-        // });
-        
-        // resultsTreeView.reveal(dataProvider.data[0]);
-      
+       
     }),
 
     vscode.commands.registerCommand('extension.openFile', (filePath: string) => {
@@ -57,27 +56,20 @@ class SearchResultItem {
   constructor(public filePath: string, public lineNumber: number, public lineText: string) {}
 }
 
-class SearchResultItemNode implements vscode.TreeItem {
-  children: SearchResultItemNode[]|undefined;
-  constructor(public item: SearchResultItem, public label: string, public collapsibleState: vscode.TreeItemCollapsibleState) {}
-
-  get command(): vscode.Command | undefined {
-    return {
+class SearchResultItemNode extends vscode.TreeItem {
+  constructor(public item: SearchResultItem, public label: string, public collapsibleState: vscode.TreeItemCollapsibleState, iconPath?: string | vscode.Uri | {
+    light: string | vscode.Uri;
+    dark: string | vscode.Uri;
+} | vscode.ThemeIcon, public children?:SearchResultItemNode[]) {
+    super(label, collapsibleState);
+    this.command = {
       command: 'searchResult.openFile',
       title: 'Open File',
       arguments: [this.item.filePath, this.item.lineNumber]
     };
-  }
-
-  get tooltip(): string {
-    return `${this.item.filePath}`;
-  }
-
-  get description(): string {
-    return `Line ${this.item.lineNumber}: ${this.item.lineText}`;
+    this.iconPath = iconPath;
   }
 }
-
 
 class SearchResultDataProvider implements vscode.TreeDataProvider<SearchResultItemNode> {
   private _onDidChangeTreeData: vscode.EventEmitter<SearchResultItemNode | undefined> = new vscode.EventEmitter<SearchResultItemNode | undefined>();
@@ -85,8 +77,35 @@ class SearchResultDataProvider implements vscode.TreeDataProvider<SearchResultIt
 
   data:SearchResultItemNode[];
 
-  constructor(public items: SearchResultItemNode[]) {
-    this.data = items;
+  tree:Map<string, SearchResultItemNode[]>;
+
+  constructor(public items: SearchResultItem[]) {
+    this.data = items.map(item => new SearchResultItemNode(item, path.basename(item.filePath), vscode.TreeItemCollapsibleState.Collapsed, undefined));
+    this.tree = new Map<string, SearchResultItemNode[]>;
+    for (let d of this.data) {
+      if (this.tree.get(d.label) !== undefined) {
+        this.tree.get(d.label)?.push(d);
+      } else {
+        this.tree.set(d.label, [d]);
+      }
+    }
+    this.data = [];
+    for (let [k, v] of this.tree) {
+      if (v.length === 0) {
+        continue;
+      }
+      let first = v.at(0);
+      if (first !== undefined) {
+        for (let value of v) {
+          value.collapsibleState = vscode.TreeItemCollapsibleState.None;
+          value.iconPath = vscode.ThemeIcon.File;
+        }
+        let root = new SearchResultItemNode(new SearchResultItem(k, 0, ""), k, vscode.TreeItemCollapsibleState.Collapsed, vscode.ThemeIcon.Folder,v.slice(0));
+        this.data.push(root);
+      }
+    }
+    
+    console.dir(this.tree);
   }
 
   getTreeItem(element: SearchResultItemNode): SearchResultItemNode {
@@ -105,7 +124,7 @@ class SearchResultDataProvider implements vscode.TreeDataProvider<SearchResultIt
   }
 }
 
-export function showSearchResults(items: SearchResultItemNode[]): void {
+export function showSearchResults(items: SearchResultItem[]): void {
   const searchResultsTreeView = vscode.window.createTreeView('searchResults', {
     treeDataProvider: new SearchResultDataProvider(items),
     showCollapseAll: true
@@ -123,4 +142,6 @@ export function showSearchResults(items: SearchResultItemNode[]): void {
       });
     });
   });
+
+  vscode.commands.executeCommand("searchResults.focus");
 }

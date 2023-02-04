@@ -7,14 +7,5 @@ export function activate(context: vscode.ExtensionContext) {
       "global-fuzzy-search.fuzzySearch",
       fuzzySearchCommand
     ),
-
-    vscode.commands.registerCommand(
-      "global-fuzzy-search.openFile",
-      (filePath: string) => {
-        vscode.workspace.openTextDocument(filePath).then((document) => {
-          vscode.window.showTextDocument(document, vscode.ViewColumn.One);
-        });
-      }
-    )
   );
 }

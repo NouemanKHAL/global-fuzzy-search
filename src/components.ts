@@ -16,12 +16,6 @@ export class SearchResultItemNode extends vscode.TreeItem {
     public children?: SearchResultItemNode[]
   ) {
     super(label, children ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
-    this.command = {
-      command: "global-fuzzy-search.openFile",
-      title: "Open File",
-      arguments: [this.item.filePath, this.item.lineNumber],
-    };
-    
     this.description = description;
     this.iconPath = children ? vscode.ThemeIcon.File : undefined;
   }

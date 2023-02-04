@@ -61,6 +61,7 @@
   },
   "dependencies": {
     "fast-find-in-files": "^0.1.1",
-    "fast-string-search": "^1.4.3"
+    "fast-string-search": "^1.4.3",
+    "fastest-levenshtein": "^1.0.16"
   }
 }

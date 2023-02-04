@@ -1,4 +1,3 @@
-import path = require("path");
 import * as vscode from "vscode";
 import fuzzySearchCommand from "./fuzzy-search";
 

@@ -9,7 +9,7 @@ export function activate(context: vscode.ExtensionContext) {
     ),
 
     vscode.commands.registerCommand(
-      "extension.openFile",
+      "global-fuzzy-search.openFile",
       (filePath: string) => {
         vscode.workspace.openTextDocument(filePath).then((document) => {
           vscode.window.showTextDocument(document, vscode.ViewColumn.One);

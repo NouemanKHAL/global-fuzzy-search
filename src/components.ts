@@ -12,24 +12,18 @@ export class SearchResultItemNode extends vscode.TreeItem {
   constructor(
     public item: SearchResultItem,
     public label: string,
-    public collapsibleState: vscode.TreeItemCollapsibleState,
-    iconPath?:
-      | string
-      | vscode.Uri
-      | {
-          light: string | vscode.Uri;
-          dark: string | vscode.Uri;
-        }
-      | vscode.ThemeIcon,
+    public description: string,
     public children?: SearchResultItemNode[]
   ) {
-    super(label, collapsibleState);
+    super(label, children ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
     this.command = {
-      command: "searchResult.openFile",
+      command: "global-fuzzy-search.openFile",
       title: "Open File",
       arguments: [this.item.filePath, this.item.lineNumber],
     };
-    this.iconPath = iconPath;
+    
+    this.description = description;
+    this.iconPath = children ? vscode.ThemeIcon.File : undefined;
   }
 }
 

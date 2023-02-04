@@ -5,6 +5,7 @@ import {
   SearchResultItem,
   SearchResultItemNode,
 } from "./components";
+
 import { fastFindInFiles } from "fast-find-in-files";
 
 // TODO: implement fuzzy search when the GUI work is done
@@ -17,7 +18,14 @@ export async function fuzzySearchCommand() {
     return;
   }
 
-  let entries = fastFindInFiles(process.cwd(), searchTerm);
+  let cwd;
+  if (vscode.workspace.workspaceFolders) {
+    cwd = vscode.workspace.workspaceFolders[0].uri.fsPath;
+  } else {
+    cwd = process.cwd();
+  }
+
+  let entries = fastFindInFiles(cwd, searchTerm);
 
   const results = [];
 
@@ -27,8 +35,7 @@ export async function fuzzySearchCommand() {
     let rootNode = new SearchResultItemNode(
       rootItem,
       filename,
-      vscode.TreeItemCollapsibleState.Collapsed,
-      vscode.ThemeIcon.File,
+      path.relative(cwd, entry.filePath),
       []
     );
     for (let hit of entry.queryHits) {
@@ -40,8 +47,7 @@ export async function fuzzySearchCommand() {
       let childNode = new SearchResultItemNode(
         childItem,
         hit.line,
-        vscode.TreeItemCollapsibleState.None,
-        undefined,
+        "",
         undefined
       );
       rootNode.children?.push(childNode);

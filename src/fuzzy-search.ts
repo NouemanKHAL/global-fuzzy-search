@@ -8,7 +8,27 @@ import {
   SearchResultItemNode,
 } from "./components";
 
-// TODO: consider splitting the pattern by spaces?
+function isAlphaNumeric(str: string): boolean {
+  return /^[a-z0-9]+$/gi.test(str);
+}
+
+function isSubSequence(sought: string, chain: string): boolean {
+  let ci = 0;
+  for (const ch of sought.split("")) {
+    if (!isAlphaNumeric(ch)) {
+      continue;
+    }
+    ci = chain.indexOf(ch, ci);
+    if (ci < 0) {
+      if (ci < 0) {
+        return false;
+      }
+    }
+    ++ci;
+  }
+  return true;
+}
+
 async function fuzzyMatch(
   file: vscode.Uri,
   pattern: string,
@@ -23,7 +43,7 @@ async function fuzzyMatch(
 
   for (let [idx, line] of lines.entries()) {
     const newline = line.toLowerCase();
-    let k = pattern.length + 1;
+    let k = pattern.length + 2;
     let word = newline.substring(0, Math.min(k, newline.length));
 
     let hits = new Map<number, SearchResultItem[]>();
@@ -31,7 +51,7 @@ async function fuzzyMatch(
     for (let i = 0; i <= newline.length - k; i++) {
       if (word[0] !== " ") {
         let dist = distance(pattern, word);
-        if (dist <= 2) {
+        if (dist <= pattern.length / 4 + 1 && isSubSequence(pattern, word)) {
           let searchItem = new SearchResultItem(
             file.fsPath,
             idx,
@@ -53,25 +73,21 @@ async function fuzzyMatch(
       }
       word = word.substring(1) + newline[i + k];
     }
-
     const keys = Array.from(hits.keys()).sort();
     if (keys.length >= 1) {
       let res = hits.get(keys[0]);
       if (res === undefined) {
         continue;
       }
-
       const newRes = mergeAdjacent(res);
-      console.log("mergedRes:" + newRes);
       results = results.concat(newRes);
-      // results.concat(hits.get(keys[1]) as SearchResultItem[]);
     }
   }
 
   return results;
 }
 
-function areAdjacent(a:SearchResultItem, b:SearchResultItem) {
+function areAdjacent(a: SearchResultItem, b: SearchResultItem) {
   if (a.filePath !== b.filePath) {
     return false;
   }
@@ -115,7 +131,6 @@ function mergeAdjacent(arr: SearchResultItem[]) {
   return merged;
 }
 
-// TODO: implement fuzzy search when the GUI work is done
 export async function fuzzySearchCommand() {
   const searchTerm = await vscode.window.showInputBox({
     placeHolder: "Enter search term",
@@ -163,7 +178,7 @@ export async function fuzzySearchCommand() {
       }
       results.push(rootNode);
     } catch (error) {
-      // console.error(`Error opening file: ${error}`);
+      console.error(`Error opening file: ${error}`);
       continue;
     }
   }

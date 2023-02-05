@@ -4,7 +4,9 @@ export class SearchResultItem {
   constructor(
     public filePath: string,
     public lineNumber: number,
-    public lineText: string
+    public lineText: string,
+    public start:number = 0,
+    public end:number = 0
   ) {}
 }
 
@@ -70,8 +72,35 @@ export function showSearchResults(items: SearchResultItemNode[]): void {
       vscode.window.showTextDocument(doc, {
         selection: new vscode.Selection(lineNumber, 0, lineNumber, 0),
       });
+    }).then(() =>{
+      highlightLine(lineNumber, selected.item.start, selected.item.end);
     });
   });
 
   vscode.commands.executeCommand("searchResults.focus");
 }
+
+
+async function highlightLine(lineNumber: number, start:number, end:number) {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return;
+  }
+  const document = editor.document;
+  const line = document.lineAt(lineNumber);
+  const startPos = new vscode.Position(lineNumber, start);
+  const endPos = new vscode.Position(lineNumber, end);
+
+  const range = new vscode.Range(startPos, endPos);
+  const decoration = {
+    range,
+    hoverMessage: `Line ${lineNumber}`,
+  };
+  editor.setDecorations(DECORATION_TYPE, [decoration]);
+}
+
+const DECORATION_TYPE = vscode.window.createTextEditorDecorationType({
+  backgroundColor: 'rgba(255,235,59, 0.3)',
+  overviewRulerLane: vscode.OverviewRulerLane.Center,
+  isWholeLine: false,
+});

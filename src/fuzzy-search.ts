@@ -113,7 +113,7 @@ function mergeAdjacent(arr: SearchResultItem[]) {
       next--;
     }
 
-    let tmpItem = new SearchResultItem(
+    const tmpItem = new SearchResultItem(
       arr[i].filePath,
       arr[i].lineNumber,
       arr[i].lineText,
@@ -185,7 +185,7 @@ async function processFile(
   searchTerm: string,
   file: any
 ): Promise<SearchResultItemNode | null> {
-  let matches = await fuzzyMatch(file, searchTerm, 0.2 * searchTerm.length);
+  const matches = await fuzzyMatch(file, searchTerm, 0.2 * searchTerm.length);
   return getItemTreeNode(cwd, file, matches);
 }
 

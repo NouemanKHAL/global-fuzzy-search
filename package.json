@@ -19,12 +19,17 @@
         {
           "id": "searchResultsContainers",
           "title": "Search Results",
-          "icon": "/home/nouemankhal/git-clone/global-fuzzy-search/search.png"
+          "icon": "search.png"
         }
       ]
     },
     "views": {
       "searchResultsContainers": [
+        {
+					"type": "webview",
+					"id": "searchInput",
+					"name": "Fuzzy Search"
+				},
         {
           "id": "searchResults",
           "name": "Search Results"

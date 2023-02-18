@@ -77,7 +77,7 @@ export function showSearchResults(items: SearchResultItemNode[]): void {
     });
   });
 
-  vscode.commands.executeCommand("searchResults.focus");
+  // vscode.commands.executeCommand("searchResults.focus");
 }
 
 

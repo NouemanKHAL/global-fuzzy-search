@@ -140,14 +140,18 @@ export async function fuzzySearchCommand() {
     return;
   }
 
-  let cwd;
+  const results = await fuzzySearch(searchTerm);
+  showSearchResults(results);
+}
+
+
+export async function fuzzySearch(searchTerm: string) {
+  let cwd = process.cwd();
   if (vscode.workspace.workspaceFolders) {
     cwd = vscode.workspace.workspaceFolders[0].uri.fsPath;
-  } else {
-    cwd = process.cwd();
   }
 
-  const results = [];
+  const results: SearchResultItemNode[] = [];
 
   const excludePattern = `{**/node_modules,**/bower_components,**/vendor,**/.git,**/.svn,**/.hg,**/CVS,**/.DS_Store,**/__pycache__}`;
   const files = await vscode.workspace.findFiles("**/*", excludePattern);
@@ -183,7 +187,7 @@ export async function fuzzySearchCommand() {
     }
   }
 
-  showSearchResults(results);
+  return results;
 }
 
 export default fuzzySearchCommand;

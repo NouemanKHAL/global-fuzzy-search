@@ -1,14 +1,16 @@
 import * as vscode from "vscode";
 import { showSearchResults } from "./components";
-import {fuzzySearchCommand, fuzzySearch} from "./fuzzy-search";
+import { fuzzySearchCommand, fuzzySearch } from "./fuzzy-search";
 
 export function activate(context: vscode.ExtensionContext) {
+  const provider = new SearchViewProvider(context.extensionUri);
 
-  const provider = new ColorsViewProvider(context.extensionUri);
-
-	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(ColorsViewProvider.viewType, provider));
-
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      SearchViewProvider.viewType,
+      provider
+    )
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -18,78 +20,72 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
+class SearchViewProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = "searchInput";
 
-class ColorsViewProvider implements vscode.WebviewViewProvider {
+  private _view?: vscode.WebviewView;
 
-	public static readonly viewType = 'searchInput';
+  constructor(private readonly _extensionUri: vscode.Uri) {}
 
-	private _view?: vscode.WebviewView;
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken
+  ) {
+    this._view = webviewView;
 
-	constructor(
-		private readonly _extensionUri: vscode.Uri,
-	) { }
+    webviewView.webview.options = {
+      // Allow scripts in the webview
+      enableScripts: true,
 
-	public resolveWebviewView(
-		webviewView: vscode.WebviewView,
-		context: vscode.WebviewViewResolveContext,
-		_token: vscode.CancellationToken,
-	) {
-		this._view = webviewView;
+      localResourceRoots: [this._extensionUri],
+    };
 
-		webviewView.webview.options = {
-			// Allow scripts in the webview
-			enableScripts: true,
+    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
-			localResourceRoots: [
-				this._extensionUri
-			]
-		};
+    webviewView.webview.onDidReceiveMessage(async (data) => {
+      const start = Date.now();
+      let results = await fuzzySearch(data.search, data.include, data.exclude);
+      console.debug("found " + results.length + " results");
+      showSearchResults(results);
+      console.debug("extension run took " + (Date.now() - start) + " ms");
+    });
+  }
 
-		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+  public search() {
+    if (this._view) {
+      this._view.show?.(true); // `show` is not implemented in 1.49 but is for 1.50 insiders
+      this._view.webview.postMessage({ type: "search" });
+    }
+  }
 
-		webviewView.webview.onDidReceiveMessage(async data => {
-			console.log("extension received: " + data.value);
-			switch (data.type) {
-				case 'searchTerm':
-					{
-						console.log("extension received: " + data.value);
-						let results = await fuzzySearch("hello");
-						console.log("found " + results.length + " results");
+  public clear() {
+    if (this._view) {
+      this._view.webview.postMessage({ type: "clear" });
+    }
+  }
 
-						showSearchResults(results);
-						// vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(`#${data.value}`));
-						break;
-					}
-			}
-		});
-	}
+  private _getHtmlForWebview(webview: vscode.Webview) {
+    // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, "media", "main.js")
+    );
 
-	public search() {
-		if (this._view) {
-			this._view.show?.(true); // `show` is not implemented in 1.49 but is for 1.50 insiders
-			this._view.webview.postMessage({ type: 'search' });
-		}
-	}
+    // Do the same for the stylesheet.
+    const styleResetUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, "media", "reset.css")
+    );
+    const styleVSCodeUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, "media", "vscode.css")
+    );
+    const styleMainUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, "media", "main.css")
+    );
 
-	public clear() {
-		if (this._view) {
-			this._view.webview.postMessage({ type: 'clear' });
-		}
-	}
+    // Use a nonce to only allow a specific script to be run.
+    const nonce = getNonce();
 
-	private _getHtmlForWebview(webview: vscode.Webview) {
-		// Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
-		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.js'));
-
-		// Do the same for the stylesheet.
-		const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
-		const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
-		const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
-
-		// Use a nonce to only allow a specific script to be run.
-		const nonce = getNonce();
-
-		return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 			<html lang="en">
 			<head>
 				<meta charset="UTF-8">
@@ -110,19 +106,24 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
 				<title>Global Fuzzy Search</title>
 			</head>
 			<body>
-        		<input type="text" id="search-term" name="search-term" placeholder="Type your text here">
+        		<span><input type="text" id="search-term" name="search-term" placeholder="Search"></span>
+				<label>files to include</label>
+        		<span><input type="text" id="include-pattern" name="include-pattern" placeholder="*.go, *.ts"></span>
+				<label>files to exclude</label>
+        		<span><input type="text" id="exclude-pattern" name="exclude-pattern" placeholder="*.go, *.ts"></span>
 				<button id="search-button">Search</button>
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
 			</html>`;
-	}
+  }
 }
 
 function getNonce() {
-	let text = '';
-	const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-	for (let i = 0; i < 32; i++) {
-		text += possible.charAt(Math.floor(Math.random() * possible.length));
-	}
-	return text;
+  let text = "";
+  const possible =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < 32; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
 }

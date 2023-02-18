@@ -8,8 +8,8 @@ import {
   SearchResultItemNode,
 } from "./components";
 
-function isAlphaNumeric(str: string): boolean {
-  return /^[a-z0-9]+$/gi.test(str);
+function isAlphaNumeric(c: string): boolean {
+  return c > '0' && c < '9' || c > 'a' && c < 'z' || c > 'A' && c < 'Z';
 }
 
 function isSubSequence(sought: string, chain: string): boolean {
@@ -41,28 +41,23 @@ async function fuzzyMatch(
   let results: SearchResultItem[] = [];
   pattern = pattern.toLowerCase();
 
-  for (let [idx, line] of lines.entries()) {
+  for (const [idx, line] of lines.entries()) {
     const newline = line.toLowerCase();
-    let k = pattern.length + 2;
+    const k = pattern.length + (pattern.length > 5 ? 2 : 1);
     let word = newline.substring(0, Math.min(k, newline.length));
 
-    let hits = new Map<number, SearchResultItem[]>();
+    const hits = new Map<number, SearchResultItem[]>();
 
-    for (let i = 0; i <= newline.length - k; i++) {
+    for (let i = 0; i <= newline.length - k; ++i) {
       if (word[0] !== " ") {
-        let dist = distance(pattern, word);
-        if (dist <= pattern.length / 4 + 1 && isSubSequence(pattern, word)) {
-          let searchItem = new SearchResultItem(
+        const dist = distance(pattern, word);
+        if (dist <= Math.ceil(pattern.length / 4) + 1 && isSubSequence(pattern, word)) {
+          const searchItem = new SearchResultItem(
             file.fsPath,
             idx,
             line,
             i,
             i + k
-          );
-          console.log(
-            `match found: pattern:'${pattern}' word:'${word}' with start:${i} and end:${
-              i + k
-            }`
           );
           if (hits.get(dist) !== undefined) {
             hits.get(dist)?.push(searchItem);
@@ -73,9 +68,9 @@ async function fuzzyMatch(
       }
       word = word.substring(1) + newline[i + k];
     }
-    const keys = Array.from(hits.keys()).sort();
+    const keys = Array.from(hits.keys());
     if (keys.length >= 1) {
-      let res = hits.get(keys[0]);
+      const res = hits.get(keys[0]);
       if (res === undefined) {
         continue;
       }
@@ -144,50 +139,71 @@ export async function fuzzySearchCommand() {
   showSearchResults(results);
 }
 
-
-export async function fuzzySearch(searchTerm: string) {
+export async function fuzzySearch(searchTerm: string, includePattern?:string, excludePattern?:string) {
   let cwd = process.cwd();
   if (vscode.workspace.workspaceFolders) {
     cwd = vscode.workspace.workspaceFolders[0].uri.fsPath;
   }
 
+  if (includePattern === undefined ||includePattern.length === 0) {
+    includePattern = "**/*";
+  }
+  if (excludePattern === undefined ||excludePattern.length === 0) {
+    excludePattern = `{**/node_modules,**/bower_components,**/vendor,**/.git,**/.svn,**/.hg,**/CVS,**/.DS_Store,**/__pycache__}`;
+  }
+  const files = await vscode.workspace.findFiles(includePattern, excludePattern);
+
   const results: SearchResultItemNode[] = [];
 
-  const excludePattern = `{**/node_modules,**/bower_components,**/vendor,**/.git,**/.svn,**/.hg,**/CVS,**/.DS_Store,**/__pycache__}`;
-  const files = await vscode.workspace.findFiles("**/*", excludePattern);
+  const allPromises = files.map((file) => processFile(cwd, searchTerm, file));
 
-  for (const file of files) {
-    try {
-      let hits = await fuzzyMatch(file, searchTerm, 0.2 * searchTerm.length);
-      if (hits.length === 0) {
-        continue;
-      }
-      let filename = path.basename(file.fsPath);
-      let rootItem = new SearchResultItem(file.fsPath, 0, "");
-      let rootNode = new SearchResultItemNode(
-        rootItem,
-        filename,
-        path.relative(cwd, file.fsPath),
-        []
-      );
+  const values = await Promise.allSettled(allPromises);
 
-      for (const hit of hits) {
-        let childNode = new SearchResultItemNode(
-          hit,
-          hit.lineText,
-          "",
-          undefined
-        );
-        rootNode.children?.push(childNode);
+  values.forEach((element) => {
+    if (element.status === "fulfilled") {
+      if (element.value !== null) {
+        results.push(element.value);
       }
-      results.push(rootNode);
-    } catch (error) {
-      console.error(`Error opening file: ${error}`);
-      continue;
     }
-  }
+   
+  });
 
   return results;
+}
+
+async function processFile(
+  cwd: string,
+  searchTerm: string,
+  file: any
+): Promise<SearchResultItemNode | null> {
+  let matches = await fuzzyMatch(file, searchTerm, 0.2 * searchTerm.length);
+  return getItemTreeNode(cwd, file, matches);
+}
+
+async function getItemTreeNode(
+  cwd: string,
+  file: any,
+  hits: any
+): Promise<SearchResultItemNode | null> {
+  if (hits.length === 0) {
+    return null;
+  }
+  const filename = path.basename(file.fsPath);
+  const rootItem = new SearchResultItem(file.fsPath, 0, "");
+  const rootNode = new SearchResultItemNode(
+    rootItem,
+    filename,
+    path.relative(cwd, file.fsPath),
+    []
+  );
+
+  const promises = hits.map(async (hit:any) => {
+    const childNode = new SearchResultItemNode(hit, hit.lineText, "", undefined);
+    await rootNode.children?.push(childNode);
+  });
+  
+  await Promise.all(promises);
+  return rootNode;
 }
 
 export default fuzzySearchCommand;

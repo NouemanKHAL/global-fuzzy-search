@@ -89,3 +89,11 @@ input::placeholder,
 textarea::placeholder {
 	color: var(--vscode-input-placeholderForeground);
 }
+
+input::placeholder{
+    opacity: 0;
+}
+
+input:focus::placeholder{
+    opacity: 1;
+}

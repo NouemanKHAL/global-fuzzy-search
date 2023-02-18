@@ -5,8 +5,8 @@ export class SearchResultItem {
     public filePath: string,
     public lineNumber: number,
     public lineText: string,
-    public start:number = 0,
-    public end:number = 0
+    public start: number = 0,
+    public end: number = 0
   ) {}
 }
 
@@ -17,7 +17,12 @@ export class SearchResultItemNode extends vscode.TreeItem {
     public description: string,
     public children?: SearchResultItemNode[]
   ) {
-    super(label, children ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+    super(
+      label,
+      children
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None
+    );
     this.description = description;
     this.iconPath = children ? vscode.ThemeIcon.File : undefined;
   }
@@ -68,20 +73,22 @@ export function showSearchResults(items: SearchResultItemNode[]): void {
     }
     const [selected] = e.selection;
     const { filePath, lineNumber } = selected.item;
-    vscode.workspace.openTextDocument(filePath).then((doc) => {
-      vscode.window.showTextDocument(doc, {
-        selection: new vscode.Selection(lineNumber, 0, lineNumber, 0),
+    vscode.workspace
+      .openTextDocument(filePath)
+      .then((doc) => {
+        vscode.window.showTextDocument(doc, {
+          selection: new vscode.Selection(lineNumber, 0, lineNumber, 0),
+        });
+      })
+      .then(() => {
+        highlightLine(lineNumber, selected.item.start, selected.item.end);
       });
-    }).then(() =>{
-      highlightLine(lineNumber, selected.item.start, selected.item.end);
-    });
   });
 
   vscode.commands.executeCommand("searchResults.focus");
 }
 
-
-async function highlightLine(lineNumber: number, start:number, end:number) {
+async function highlightLine(lineNumber: number, start: number, end: number) {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     return;
@@ -100,7 +107,7 @@ async function highlightLine(lineNumber: number, start:number, end:number) {
 }
 
 const DECORATION_TYPE = vscode.window.createTextEditorDecorationType({
-  backgroundColor: 'rgba(255,235,59, 0.3)',
+  backgroundColor: "rgba(255,235,59, 0.3)",
   overviewRulerLane: vscode.OverviewRulerLane.Center,
   isWholeLine: false,
 });

@@ -9,7 +9,7 @@ import {
 } from "./components";
 
 function isAlphaNumeric(c: string): boolean {
-  return c > '0' && c < '9' || c > 'a' && c < 'z' || c > 'A' && c < 'Z';
+  return (c > "0" && c < "9") || (c > "a" && c < "z") || (c > "A" && c < "Z");
 }
 
 function isSubSequence(sought: string, chain: string): boolean {
@@ -51,7 +51,10 @@ async function fuzzyMatch(
     for (let i = 0; i <= newline.length - k; ++i) {
       if (word[0] !== " ") {
         const dist = distance(pattern, word);
-        if (dist <= Math.ceil(pattern.length / 4) + 1 && isSubSequence(pattern, word)) {
+        if (
+          dist <= Math.ceil(pattern.length / 4) + 1 &&
+          isSubSequence(pattern, word)
+        ) {
           const searchItem = new SearchResultItem(
             file.fsPath,
             idx,
@@ -139,19 +142,26 @@ export async function fuzzySearchCommand() {
   showSearchResults(results);
 }
 
-export async function fuzzySearch(searchTerm: string, includePattern?:string, excludePattern?:string) {
+export async function fuzzySearch(
+  searchTerm: string,
+  includePattern?: string,
+  excludePattern?: string
+) {
   let cwd = process.cwd();
   if (vscode.workspace.workspaceFolders) {
     cwd = vscode.workspace.workspaceFolders[0].uri.fsPath;
   }
 
-  if (includePattern === undefined ||includePattern.length === 0) {
+  if (includePattern === undefined || includePattern.length === 0) {
     includePattern = "**/*";
   }
-  if (excludePattern === undefined ||excludePattern.length === 0) {
+  if (excludePattern === undefined || excludePattern.length === 0) {
     excludePattern = `{**/node_modules,**/bower_components,**/vendor,**/.git,**/.svn,**/.hg,**/CVS,**/.DS_Store,**/__pycache__}`;
   }
-  const files = await vscode.workspace.findFiles(includePattern, excludePattern);
+  const files = await vscode.workspace.findFiles(
+    includePattern,
+    excludePattern
+  );
 
   const results: SearchResultItemNode[] = [];
 
@@ -165,7 +175,6 @@ export async function fuzzySearch(searchTerm: string, includePattern?:string, ex
         results.push(element.value);
       }
     }
-   
   });
 
   return results;
@@ -197,11 +206,16 @@ async function getItemTreeNode(
     []
   );
 
-  const promises = hits.map(async (hit:any) => {
-    const childNode = new SearchResultItemNode(hit, hit.lineText, "", undefined);
+  const promises = hits.map(async (hit: any) => {
+    const childNode = new SearchResultItemNode(
+      hit,
+      hit.lineText,
+      "",
+      undefined
+    );
     await rootNode.children?.push(childNode);
   });
-  
+
   await Promise.all(promises);
   return rootNode;
 }

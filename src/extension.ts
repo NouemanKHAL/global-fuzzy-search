@@ -35,7 +35,6 @@ class SearchViewProvider implements vscode.WebviewViewProvider {
     this._view = webviewView;
 
     webviewView.webview.options = {
-      // Allow scripts in the webview
       enableScripts: true,
 
       localResourceRoots: [this._extensionUri],
@@ -50,19 +49,6 @@ class SearchViewProvider implements vscode.WebviewViewProvider {
       showSearchResults(results);
       console.debug("extension run took " + (Date.now() - start) + " ms");
     });
-  }
-
-  public search() {
-    if (this._view) {
-      this._view.show?.(true); // `show` is not implemented in 1.49 but is for 1.50 insiders
-      this._view.webview.postMessage({ type: "search" });
-    }
-  }
-
-  public clear() {
-    if (this._view) {
-      this._view.webview.postMessage({ type: "clear" });
-    }
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
@@ -90,11 +76,6 @@ class SearchViewProvider implements vscode.WebviewViewProvider {
 			<head>
 				<meta charset="UTF-8">
 
-				<!--
-					Use a content security policy to only allow loading styles from our extension directory,
-					and only allow scripts that have a specific nonce.
-					(See the 'webview-sample' extension sample for img-src content security policy examples)
-				-->
 				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">

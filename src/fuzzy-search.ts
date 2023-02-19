@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import * as fs from "fs";
 import { distance } from "fastest-levenshtein";
 
 import {
@@ -148,16 +149,21 @@ export async function fuzzySearch(
   excludePattern?: string
 ) {
   let cwd = process.cwd();
-  if (vscode.workspace.workspaceFolders) {
-    cwd = vscode.workspace.workspaceFolders[0].uri.fsPath;
+  
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+  if (!workspaceFolder) {
+    return [];
   }
 
-  if (includePattern === undefined || includePattern.length === 0) {
+  if (!includePattern) {
     includePattern = "**/*";
   }
-  if (excludePattern === undefined || excludePattern.length === 0) {
-    excludePattern = `{**/node_modules,**/bower_components,**/vendor,**/.git,**/.svn,**/.hg,**/CVS,**/.DS_Store,**/__pycache__}`;
+
+  if (!excludePattern) {
+    const config = vscode.workspace.getConfiguration("files", null);
+    excludePattern = config.get("exclude");
   }
+
   const files = await vscode.workspace.findFiles(
     includePattern,
     excludePattern

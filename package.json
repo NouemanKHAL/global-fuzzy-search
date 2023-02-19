@@ -3,6 +3,7 @@
   "displayName": "Global Fuzzy Search",
   "description": "Fuzzy search for content across your workspace files",
   "version": "0.0.1",
+  "repository": "https://github.com/NouemanKHAL/global-fuzzy-search",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -70,8 +71,6 @@
     "typescript": "^4.9.4"
   },
   "dependencies": {
-    "fast-find-in-files": "^0.1.1",
-    "fast-string-search": "^1.4.3",
     "fastest-levenshtein": "^1.0.16"
   }
 }

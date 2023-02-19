@@ -18,13 +18,13 @@ To get started with Global Fuzzy Search, simply install the extension from the V
 
 By default, Global Fuzzy Search will search all files in your project. For better performance, its recommended to add an include pattern.
 ## TODO
-- Add option to specify the maximum allowed edit distance.
-- Add option to customize whether or to check for the substring constraint.
+- Add an option to specify the maximum allowed edit distance.
+- Add an option to customize whether or not to check for the substring constraint.
 - Improve performance on large projects.
 - Improve the underlying algorithm.
 
 ## Contributing
-If you find a bug or have a feature request, please create an issue.
+If you find a bug or have a feature request, please file an issue.
 
 ## License
 Global Fuzzy Search is licensed under the MIT License.

@@ -1,15 +1,18 @@
 {
   "name": "global-fuzzy-search",
+  "publisher": "NouemanKHAL",
   "displayName": "Global Fuzzy Search",
   "description": "Fuzzy search for content across your workspace files",
   "version": "0.0.1",
   "repository": "https://github.com/NouemanKHAL/global-fuzzy-search",
+  "license": "SEE LICENCE IN LICENCE.md",
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": [
     "Other"
   ],
+  "keywords": ["fuzzy", "search", "find", "fzf", "levenshtein"],
   "activationEvents": [
     "onCommand:global-fuzzy-search.fuzzySearch"
   ],

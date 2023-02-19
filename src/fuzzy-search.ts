@@ -8,6 +8,7 @@ import {
   SearchResultItem,
   SearchResultItemNode,
 } from "./components";
+import { TextDecoder } from "util";
 
 function isAlphaNumeric(c: string): boolean {
   return (c > "0" && c < "9") || (c > "a" && c < "z") || (c > "A" && c < "Z");
@@ -36,53 +37,52 @@ async function fuzzyMatch(
   maxDistance: number
 ): Promise<SearchResultItem[]> {
   const document = await vscode.workspace.openTextDocument(file);
-  const fileContent = document.getText();
-  const lines = fileContent.split(/\r?\n/);
+  // const fileContent = document.getText();
+  // const lines = fileContent.split(/\r?\n/);
 
   let results: SearchResultItem[] = [];
   pattern = pattern.toLowerCase();
 
-  for (const [idx, line] of lines.entries()) {
-    const newline = line.toLowerCase();
-    const k = pattern.length + (pattern.length > 5 ? 2 : 1);
-    let word = newline.substring(0, Math.min(k, newline.length));
+  // Read the content of the file as a buffer
+  const fileBuffer = await vscode.workspace.fs.readFile(file);
 
-    const hits = new Map<number, SearchResultItem[]>();
+  // Create a TextDecoder to decode the buffer as UTF-8 text
+  const decoder = new TextDecoder("utf-8");
 
-    for (let i = 0; i <= newline.length - k; ++i) {
-      if (word[0] !== " ") {
-        const dist = distance(pattern, word);
-        if (
-          dist <= Math.ceil(pattern.length / 4) + 1 &&
-          isSubSequence(pattern, word)
-        ) {
-          const searchItem = new SearchResultItem(
-            file.fsPath,
-            idx,
-            line,
-            i,
-            i + k
-          );
-          if (hits.get(dist) !== undefined) {
-            hits.get(dist)?.push(searchItem);
-          } else {
-            hits.set(dist, [searchItem]);
-          }
-        }
-      }
-      word = word.substring(1) + newline[i + k];
-    }
-    const keys = Array.from(hits.keys());
-    if (keys.length >= 1) {
-      const res = hits.get(keys[0]);
-      if (res === undefined) {
-        continue;
-      }
-      const newRes = mergeAdjacent(res);
-      results = results.concat(newRes);
-    }
+  // Decode the buffer as text
+  const fileContent = decoder.decode(fileBuffer);
+
+  let lineCount = 1;
+  const k = pattern.length + (pattern.length > 5 ? 2 : 1);
+  let word = "";
+
+  for (let i = 0; i < Math.min(k, fileContent.length); ++i) {
+    word += fileContent.charAt(i).toLowerCase();
   }
 
+  for (let i = 0; i < fileContent.length - k; i+=2) {
+    const character = fileContent.charAt(i);
+    if (character === "\n") {
+      ++lineCount;
+    }
+    if (word[0] !== " ") {
+      const dist = distance(pattern, word);
+      if (
+        dist <= maxDistance &&
+        isSubSequence(pattern, word)
+      ) {
+        const searchItem = new SearchResultItem(
+          file.fsPath,
+          lineCount,
+          word,
+          i,
+          i + k
+        );
+        results.push(searchItem);
+      }
+    }
+    word = word.substring(1) + fileContent.charAt(i + k).toLowerCase();
+  }
   return results;
 }
 
@@ -156,7 +156,7 @@ export async function fuzzySearch(
   if (includePattern === undefined || includePattern.length === 0) {
     includePattern = "**/*";
   }
-  
+
   if (excludePattern === undefined || excludePattern.length === 0) {
     const gitIgnoreContent = fs.readFileSync(".gitignore", "utf-8");
     const gitIgnorePattern = gitIgnoreContent
@@ -216,14 +216,14 @@ async function getItemTreeNode(
     []
   );
 
-  const promises = hits.map(async (hit: any) => {
+  const promises = hits.map((hit: any) => {
     const childNode = new SearchResultItemNode(
       hit,
       hit.lineText,
       "",
       undefined
     );
-    await rootNode.children?.push(childNode);
+    rootNode.children?.push(childNode);
   });
 
   await Promise.all(promises);

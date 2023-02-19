@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import * as fs from "fs";
 import { distance } from "fastest-levenshtein";
 
 import {
@@ -155,9 +156,18 @@ export async function fuzzySearch(
   if (includePattern === undefined || includePattern.length === 0) {
     includePattern = "**/*";
   }
+  
   if (excludePattern === undefined || excludePattern.length === 0) {
-    excludePattern = `{**/node_modules,**/bower_components,**/vendor,**/.git,**/.svn,**/.hg,**/CVS,**/.DS_Store,**/__pycache__}`;
+    const gitIgnoreContent = fs.readFileSync(".gitignore", "utf-8");
+    const gitIgnorePattern = gitIgnoreContent
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"))
+      .map((line) => line.replace(/^\//, ""))
+      .join("|");
+    excludePattern = `{${gitIgnorePattern}}`;
   }
+
   const files = await vscode.workspace.findFiles(
     includePattern,
     excludePattern
